@@ -37,9 +37,21 @@ OPEN_IMAGES_SRC = os.path.join(PROJECT_ROOT, "bag_detection_dataset")
 ROBOFLOW_SRC = os.path.join(PROJECT_ROOT, "robo_ABOD") 
 
 # Unified Schema: 0: person, 1: bag
-OI_MAP = {0: 1, 1: 1, 2: 1, 3: 1} # OpenImages Bags -> 1
-# Roboflow: 0 -> 0 (person), 1 -> 1 (bag), 2 -> 1 (suspicious-object)
-RF_MAP = {0: 0, 1: 1, 2: 1}      
+
+# Roboflow Mapping:
+# 0 -> 1 (Suspicious bag is still a bag)
+# 1 -> 0 (null means the bag is still with person, so we label it as person)
+# 2 -> 1 (Suspicious-object is still a bag)
+RF_MAP = {0: 1, 1: 0, 2: 1}
+
+# OpenImages Mapping:
+# ["Backpack", "Handbag","Suitcase", "Luggage and bags"]
+# (Assuming your OI procurement script used these indices)
+# 0: Backpack -> 1
+# 1: Handbag -> 1
+# 2: Suitcase -> 1
+# 3: Luggage and bags -> 1
+OI_MAP = {0: 1, 1: 1, 2: 1, 3: 1}
 
 def create_yaml(target_path):
     """Generates dataset.yaml in the project root folder"""
