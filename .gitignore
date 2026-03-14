@@ -3,6 +3,6 @@ final_unified_dataset/
 bag_detection_dataset/
 robo_ABOD/
 *.pt
-runs/
 venv/
 .venv/
+.DS_Store/
