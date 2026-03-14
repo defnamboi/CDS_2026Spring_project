@@ -6,4 +6,4 @@ robo_ABOD/
 *.pt
 runs/
 venv/
-.venv/
+.venv/.DS_Store
