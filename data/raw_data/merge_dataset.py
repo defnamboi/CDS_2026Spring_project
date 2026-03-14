@@ -33,7 +33,8 @@ final unified_dataset/
 # Use absolute paths to prevent Windows "File Not Found" errors
 PROJECT_ROOT = os.getcwd()
 MASTER_DIR = os.path.join(PROJECT_ROOT, "final_unified_dataset")
-OPEN_IMAGES_SRC = os.path.join(PROJECT_ROOT, "bag_detection_dataset")
+BAG_OPEN_IMAGES_SRC = os.path.join(PROJECT_ROOT, "bag_detection_dataset")
+PERSON_OPEN_IMAGES_SRC = os.path.join(PROJECT_ROOT, "person_detection_dataset")
 ROBOFLOW_SRC = os.path.join(PROJECT_ROOT, "robo_ABOD") 
 
 # Unified Schema: 0: person, 1: bag
@@ -51,7 +52,10 @@ RF_MAP = {0: 1, 1: 0, 2: 1}
 # 1: Handbag -> 1
 # 2: Suitcase -> 1
 # 3: Luggage and bags -> 1
-OI_MAP = {0: 1, 1: 1, 2: 1, 3: 1}
+BAG_OI_MAP = {0: 1, 1: 1, 2: 1, 3: 1}
+
+PERSON_OI_MAP = {0: 0}  # Person class remains as 0
+
 
 def create_yaml(target_path):
     """Generates dataset.yaml in the project root folder"""
@@ -70,10 +74,13 @@ names:
         f.write(yaml_content.strip())
     print(f"✅ Created YAML configuration at: {yaml_filename}")
 
-def process_and_merge(src_path, is_roboflow=True):
+def process_and_merge(src_path, is_roboflow=True,bag=False):
     splits = ['train', 'val', 'test']
     # Roboflow sometimes uses 'valid' instead of 'val'
-    mapping = RF_MAP if is_roboflow else OI_MAP
+    if is_roboflow:
+        mapping = RF_MAP
+    else:
+        mapping = BAG_OI_MAP if bag else PERSON_OI_MAP
     
     for split in splits:
         # Handling Roboflow's 'valid' naming convention
@@ -99,10 +106,12 @@ def process_and_merge(src_path, is_roboflow=True):
             if not label_file.endswith(".txt"): continue
             
             # Copy Image
-            img_file = label_file.replace(".txt", ".jpg")
-            src_img_path = os.path.join(src_img_dir, img_file)
-            if os.path.exists(src_img_path):
-                shutil.copy(src_img_path, os.path.join(target_img_dir, img_file))
+            for ext in [".jpg", ".jpeg", ".png"]:
+                img_file = label_file.replace(".txt", ext)
+                src_img_path = os.path.join(src_img_dir, img_file)
+                if os.path.exists(src_img_path):
+                    shutil.copy(src_img_path, os.path.join(target_img_dir, img_file))
+                    break
 
             # Remap and Write Labels
             with open(os.path.join(src_lbl_dir, label_file), 'r') as f:
@@ -124,7 +133,8 @@ if __name__ == "__main__":
         shutil.rmtree(MASTER_DIR)
     
     print("Starting Merge...")
-    process_and_merge(OPEN_IMAGES_SRC, is_roboflow=False)
+    process_and_merge(BAG_OPEN_IMAGES_SRC, is_roboflow=False,bag=True)
+    process_and_merge(PERSON_OPEN_IMAGES_SRC, is_roboflow=False,bag=False)
     process_and_merge(ROBOFLOW_SRC, is_roboflow=True)
     
     create_yaml(MASTER_DIR)
