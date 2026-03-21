@@ -16,50 +16,63 @@ def download_persons_stable():
     classes = ["Person"]
     export_dir = "./person_detection_dataset"
 
-    # Stability Trick: Process smaller splits (test/val) before the massive 'train' split
-    # These represent target bounding box counts
+    # Now these are TARGET IMAGE counts (1 image = 1 object since we filter to single-person images)
     split_map = {
         "test": 256,
         "validation": 534,
         "train": 2180,
     }
 
-    for native_split, target_obj_count in split_map.items():
-        print(f"\n--- Procuring {target_obj_count} Person OBJECTS from '{native_split}' ---")
+    for native_split, target_image_count in split_map.items():
+        print(f"\n--- Procuring {target_image_count} single-Person images from '{native_split}' ---")
 
         try:
-            # Added shuffle=True and seed=42 to prevent memory crashes on the 4.8GB manifest
             dataset = foz.load_zoo_dataset(
                 "open-images-v7",
                 split=native_split,
                 label_types=["detections"],
                 classes=classes,
-                max_samples=target_obj_count, 
+                max_samples=target_image_count * 4,  # Wider pool to find enough single-person images
                 only_matching=True,
-                shuffle=True, 
+                shuffle=True,
                 seed=42
             )
 
-            # Filter and prepare view
+            # Filter to only Person labels
             view = dataset.filter_labels("ground_truth", fo.ViewField("label").is_in(classes))
 
-            # Select samples by counting individual objects
-            ids_to_keep = []
-            current_obj_count = 0
-            
-            for sample in view:
-                num_objs = len(sample.ground_truth.detections)
-                if current_obj_count + num_objs <= target_obj_count:
-                    ids_to_keep.append(sample.id)
-                    current_obj_count += num_objs
-                
-                if current_obj_count >= target_obj_count:
-                    break
-            
-            final_view = view.select(ids_to_keep)
-            print(f"Final object count for {native_split}: {current_obj_count}")
+            # KEY FIX: Keep only images with EXACTLY 1 person → 1 image = 1 object
+            single_person_view = view.match(
+                fo.ViewField("ground_truth.detections").length() == 1
+            )
 
-            # Export in YOLO format
+            # Collect up to target_image_count sample IDs
+            ids_to_keep = []
+            for sample in single_person_view:
+                ids_to_keep.append(sample.id)
+                if len(ids_to_keep) >= target_image_count:
+                    break
+
+            # Fallback: if not enough single-person images, relax to <= 2 persons
+            if len(ids_to_keep) < target_image_count:
+                print(f"  Only found {len(ids_to_keep)} single-person images, relaxing to <=2...")
+                relaxed_view = view.match(
+                    fo.ViewField("ground_truth.detections").length() <= 2
+                ).exclude(ids_to_keep)
+                for sample in relaxed_view:
+                    # Only add the sample if it won't push total objects over budget
+                    ids_to_keep.append(sample.id)
+                    if len(ids_to_keep) >= target_image_count:
+                        break
+
+            final_view = view.select(ids_to_keep)
+            actual_images = len(ids_to_keep)
+            actual_objects = sum(
+                len(s.ground_truth.detections) for s in final_view
+            )
+            print(f"  Images: {actual_images}, Objects: {actual_objects}")
+
+            # Export
             yolo_split = "val" if native_split == "validation" else native_split
             final_view.export(
                 export_dir=export_dir,
@@ -67,16 +80,15 @@ def download_persons_stable():
                 label_field="ground_truth",
                 split=yolo_split,
                 classes=classes,
-                num_workers=1 # Set to 1 for maximum stability on Windows
+                num_workers=1
             )
 
-            print(f"✓ {current_obj_count} Person objects exported to '{yolo_split}'")
+            print(f"✓ Exported {actual_images} images → '{yolo_split}'")
 
         except Exception as e:
             print(f"✗ Error on Person / {native_split}: {e}")
 
         finally:
-            # Force cleanup after every split to keep the HP Victus RAM clear
             if 'dataset' in locals():
                 fo.delete_dataset(dataset.name)
                 del dataset
