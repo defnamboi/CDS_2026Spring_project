@@ -34,10 +34,10 @@ PROJECT_ROOT = os.getcwd()
 MASTER_DIR = os.path.join(PROJECT_ROOT, "final_unified_dataset")
 BAG_OPEN_IMAGES_SRC = os.path.join(PROJECT_ROOT, "bag_detection_dataset")
 PERSON_OPEN_IMAGES_SRC = os.path.join(PROJECT_ROOT, "person_detection_dataset")
-ROBOFLOW_SRC = os.path.join(PROJECT_ROOT, "robo_ABOD") 
+# ROBOFLOW_SRC = os.path.join(PROJECT_ROOT, "robo_ABOD") 
 
 # Unified Schema: 0: person, 1: bag
-RF_MAP = {0: 1, 1: 0, 2: 1}
+# RF_MAP = {0: 1, 1: 0, 2: 1}
 BAG_OI_MAP = {0: 1,1:1,2:1,3:1}  # All bag classes map to 'bag' (1)
 PERSON_OI_MAP = {0: 0}
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     print("🚀 Starting Merge...")
     process_and_merge(BAG_OPEN_IMAGES_SRC, is_roboflow=False, bag=True)
     process_and_merge(PERSON_OPEN_IMAGES_SRC, is_roboflow=False, bag=False)
-    process_and_merge(ROBOFLOW_SRC, is_roboflow=True)
+    #process_and_merge(ROBOFLOW_SRC, is_roboflow=True)
     
     create_yaml(MASTER_DIR)
     print("✨ Done! Your unified dataset is ready for training.")
