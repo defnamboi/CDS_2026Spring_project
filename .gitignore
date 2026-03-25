@@ -6,3 +6,6 @@ robo_ABOD/
 venv/
 .venv/
 .DS_Store/
+.vscode/
+src/outputs/
+src/uploads
