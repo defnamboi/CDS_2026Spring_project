@@ -1,13 +1,18 @@
 import fiftyone as fo
 import fiftyone.zoo as foz
-import os
 import gc
+import os
 
-os.environ["FIFTYONE_DATASET_ZOO_DIR"] = "D:/fiftyone_zoo"
-os.environ["FIFTYONE_DATABASE_DIR"] = "D:/fiftyone_db"
+# Performance and path configurations
 os.environ["AWS_DEFAULT_REGION"] = "ap-southeast-1"
+os.environ["FIFTYONE_SHOW_PROGRESS_BARS"] = "true"
+os.environ["FIFTYONE_DATABASE_DIR"] = "D:/fiftyone_db"
 
-def download_bags_original_labels():
+fo.config.show_progress_bars = True
+fo.config.desktop_app_close_on_exit = True
+fo.config.dataset_zoo_dir = "D:/fiftyone_zoo"
+
+def download_bags_stable():
     bag_classes = ["Backpack", "Handbag", "Suitcase", "Luggage and bags"]
     export_dir = "./bag_detection_dataset"
 
@@ -17,71 +22,55 @@ def download_bags_original_labels():
         "train": 700,
     }
 
-    first_export = True
-
     for native_split, target_image_count in split_map.items():
-        print(f"\n--- Processing {native_split} (target: {target_image_count} images) ---")
+        print(f"\n--- Procuring {target_image_count} single-bag images from '{native_split}' ---")
 
         try:
-            # Step 1: Download ALL available matching samples — no max_samples cap
             dataset = foz.load_zoo_dataset(
                 "open-images-v7",
                 split=native_split,
                 label_types=["detections"],
                 classes=bag_classes,
-                # NO max_samples — pull everything available for these classes
+                max_samples=target_image_count * 4,  # Wider pool to find enough single-bag images
                 only_matching=True,
                 shuffle=True,
                 seed=42
             )
 
-            print(f"  Total downloaded samples: {len(dataset)}")
+            # Filter to only bag labels
+            view = dataset.filter_labels("ground_truth", fo.ViewField("label").is_in(bag_classes))
 
-            # Step 2: Filter labels to only bag classes
-            view = dataset.filter_labels(
-                "ground_truth", fo.ViewField("label").is_in(bag_classes)
-            )
-
-            # Step 3: Try single-bag images first (images == objects)
-            single_view = view.match(
+            # Keep only images with EXACTLY 1 bag → 1 image = 1 object
+            single_bag_view = view.match(
                 fo.ViewField("ground_truth.detections").length() == 1
             )
-            print(f"  Single-bag images available: {len(single_view)}")
 
-            ids_to_keep = [s.id for s in single_view]  # collect ALL, slice later
+            # Collect up to target_image_count sample IDs
+            ids_to_keep = []
+            for sample in single_bag_view:
+                ids_to_keep.append(sample.id)
+                if len(ids_to_keep) >= target_image_count:
+                    break
 
-            if len(ids_to_keep) >= target_image_count:
-                # Enough single-bag images — just take what we need
-                ids_to_keep = ids_to_keep[:target_image_count]
-                print(f"  Using {len(ids_to_keep)} single-bag images.")
-            else:
-                # Not enough — fill remainder with <=3 bag images
-                print(f"  ⚠ Only {len(ids_to_keep)} single-bag images, filling remainder...")
+            # Fallback: if not enough single-bag images, relax to <= 3 bags
+            if len(ids_to_keep) < target_image_count:
+                print(f"  Only found {len(ids_to_keep)} single-bag images, relaxing to <=3...")
                 relaxed_view = view.match(
                     fo.ViewField("ground_truth.detections").length() <= 3
                 ).exclude(ids_to_keep)
-
-                needed = target_image_count - len(ids_to_keep)
-                extra_ids = [s.id for s in relaxed_view][:needed]
-                ids_to_keep.extend(extra_ids)
-                print(f"  After relaxed fill: {len(ids_to_keep)} images.")
-
-            # Step 4: Final fallback — if STILL not enough, take whatever is left
-            if len(ids_to_keep) < target_image_count:
-                print(f"  ⚠ Still only {len(ids_to_keep)} — using all available images.")
-                remaining = view.exclude(ids_to_keep)
-                extra_ids = [s.id for s in remaining][:target_image_count - len(ids_to_keep)]
-                ids_to_keep.extend(extra_ids)
+                for sample in relaxed_view:
+                    ids_to_keep.append(sample.id)
+                    if len(ids_to_keep) >= target_image_count:
+                        break
 
             final_view = view.select(ids_to_keep)
             actual_images = len(ids_to_keep)
-            actual_objects = sum(len(s.ground_truth.detections) for s in final_view)
-            print(f"  ✓ Final — Images: {actual_images}, Objects: {actual_objects}")
+            actual_objects = sum(
+                len(s.ground_truth.detections) for s in final_view
+            )
+            print(f"  Images: {actual_images}, Objects: {actual_objects}")
 
-            # Warn if we still came up short (split simply doesn't have enough data)
-            if actual_images < target_image_count:
-                print(f"  ⚠ WARNING: Split only has {actual_images} bag images total — target unreachable.")
-
+            # Export
             yolo_split = "val" if native_split == "validation" else native_split
             final_view.export(
                 export_dir=export_dir,
@@ -89,20 +78,20 @@ def download_bags_original_labels():
                 label_field="ground_truth",
                 split=yolo_split,
                 classes=bag_classes,
-                overwrite=first_export,
+                num_workers=1
             )
 
-            first_export = False
-            print(f"✅ Exported {actual_images} images to '{yolo_split}' split.")
+            print(f"✓ Exported {actual_images} images → '{yolo_split}'")
 
         except Exception as e:
-            print(f"❌ Error on {native_split}: {e}")
-            import traceback; traceback.print_exc()
+            print(f"✗ Error on bags / {native_split}: {e}")
 
         finally:
             if 'dataset' in locals():
                 fo.delete_dataset(dataset.name)
+                del dataset
             gc.collect()
 
 if __name__ == "__main__":
-    download_bags_original_labels()
+    download_bags_stable()
+    print(f"\nProcurement Complete. Bag data is at ./bag_detection_dataset")

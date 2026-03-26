@@ -127,8 +127,8 @@ if __name__ == "__main__":
         shutil.rmtree(MASTER_DIR)
     
     print("🚀 Starting Merge...")
-    process_and_merge(BAG_OPEN_IMAGES_SRC, is_roboflow=False, bag=True)
-    process_and_merge(PERSON_OPEN_IMAGES_SRC, is_roboflow=False, bag=False)
+    # process_and_merge(BAG_OPEN_IMAGES_SRC, is_roboflow=False, bag=True)
+    # process_and_merge(PERSON_OPEN_IMAGES_SRC, is_roboflow=False, bag=False)
     process_and_merge(ROBOFLOW_SRC, is_roboflow=True)
     
     create_yaml(MASTER_DIR)
