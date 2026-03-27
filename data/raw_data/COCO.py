@@ -17,10 +17,9 @@ BAG_LABELS = {"handbag", "backpack", "suitcase"}
 
 # Target counts per scenario BEFORE splitting
 TARGET = {
-    "person_only":   600,   # person, no bag
-    "bag_only":      300,   # bag(s), no person
-    "person_and_bag":400,   # both present
-    "background":    300,   # neither
+    "person_only":   2000,   # person, no bag
+    "bag_only":      1500,   # bag(s), no person
+    "person_and_bag":3000,   # both present
 }
 
 SPLIT = {"train": 0.80, "val": 0.10, "test": 0.10}
@@ -36,7 +35,7 @@ dataset = foz.load_zoo_dataset(
     "coco-2017",
     split="train",
     label_types=["detections"],
-    max_samples=15000,        # large pool to satisfy all buckets
+    max_samples=30000,        # large pool to satisfy all buckets
 )
 
 # ── Bucket samples ────────────────────────────────────────────────────────────
@@ -54,9 +53,6 @@ for sample in dataset:
         buckets["person_only"].append(sample)
     elif has_bag    and not has_person and len(buckets["bag_only"])    < TARGET["bag_only"]:
         buckets["bag_only"].append(sample)
-    elif not has_person and not has_bag and len(buckets["background"]) < TARGET["background"]:
-        buckets["background"].append(sample)
-
     if all(len(buckets[k]) >= TARGET[k] for k in TARGET):
         break
 
@@ -113,7 +109,6 @@ bucket_meta = [
     ("person_only",    "per",  False),
     ("bag_only",       "bag",  False),
     ("person_and_bag", "pab",  False),
-    ("background",     "bg",   True ),
 ]
 
 for bucket_key, prefix, is_bg in bucket_meta:
