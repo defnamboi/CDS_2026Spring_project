@@ -9,3 +9,5 @@ venv/
 .vscode/
 src/outputs/
 src/uploads
+*.mp4
+*.avi
