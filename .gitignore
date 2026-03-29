@@ -3,7 +3,11 @@ final_unified_dataset/
 bag_detection_dataset/
 person_detection_dataset/
 robo_ABOD/
-*.pt
 venv/
 .venv/
 .DS_Store/
+.vscode/
+src/outputs/
+src/uploads
+*.mp4
+*.avi

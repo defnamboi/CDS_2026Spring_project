@@ -43,7 +43,7 @@ def zip_dataset(source_dir, output_filename):
 if __name__ == "__main__":
     # Ensure this matches the export_dir from your procurement script
     DATASET_PATH = "./final_unified_dataset" # Change if you want to zip the merged dataset instead
-    ZIP_NAME = "suspicious_bag_data_v4.zip"
+    ZIP_NAME = "suspicious_bag_data_v6_OnlyOpenImg.zip"
     
     if os.path.exists(DATASET_PATH):
         zip_dataset(DATASET_PATH, ZIP_NAME)
