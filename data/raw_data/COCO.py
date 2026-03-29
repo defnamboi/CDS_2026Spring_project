@@ -18,8 +18,8 @@ BAG_LABELS = {"handbag", "backpack", "suitcase"}
 # Target counts per scenario BEFORE splitting
 TARGET = {
     "person_only":   2000,   # person, no bag
-    "bag_only":      1500,   # bag(s), no person
-    "person_and_bag":3000,   # both present
+    "bag_only":      2000,   # bag(s), no person
+    "person_and_bag":4000,   # both present
 }
 
 SPLIT = {"train": 0.80, "val": 0.10, "test": 0.10}
@@ -35,7 +35,7 @@ dataset = foz.load_zoo_dataset(
     "coco-2017",
     split="train",
     label_types=["detections"],
-    max_samples=30000,        # large pool to satisfy all buckets
+    max_samples=40000,        # large pool to satisfy all buckets
 )
 
 # ── Bucket samples ────────────────────────────────────────────────────────────

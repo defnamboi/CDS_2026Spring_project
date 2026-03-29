@@ -17,9 +17,9 @@ def download_bags_stable():
     export_dir = "./bag_detection_dataset"
 
     split_map = {
-        "test": 100,
+        "test": 200,
         "validation": 200,
-        "train": 700,
+        "train": 1600,
     }
 
     for native_split, target_image_count in split_map.items():
