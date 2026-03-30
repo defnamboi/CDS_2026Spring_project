@@ -16,6 +16,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
 from deepsort_tracker import DeepSortTracker
+from suspicious_bag_logic import SuspiciousBagAnalyzer
 
 st.set_page_config(page_title="Upload And Run", layout="wide")
 
@@ -26,6 +27,12 @@ RUNS_DIR = ROOT_DIR / "runs" / "detect"
 
 TRACKABLE_CLASSES = {"person", "bag", "handbag", "backpack", "suitcase"}
 BAG_CLASSES = {"bag", "handbag", "backpack", "suitcase"}
+BAG_STATUS_COLORS = {
+    "normal": (0, 165, 255),
+    "warming_up": (170, 170, 170),
+    "unattended": (0, 255, 255),
+    "abandoned": (0, 0, 255),
+}
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -67,6 +74,7 @@ confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.5, 
 iou_threshold = st.sidebar.slider("IoU Threshold", 0.0, 1.0, 0.5, 0.05) #intersection over union,overlap of frames
 distance_threshold = st.sidebar.slider("Bag-Person Distance Threshold (pixels)", 10, 500, 120, 10)
 abandonment_time = st.sidebar.slider("Abandonment Time Threshold (seconds)", 1, 60, 10, 1)
+min_bag_track_frames = st.sidebar.slider("Min Bag Track Frames", 1, 60, 12, 1)
 show_boxes = st.sidebar.checkbox("Show Bounding Boxes", value=True)
 show_ids = st.sidebar.checkbox("Show Tracking IDs", value=True)
 
@@ -110,6 +118,7 @@ def save_run_config(input_source: str, input_path: str):
         "iou_threshold": iou_threshold,
         "distance_threshold": distance_threshold,
         "abandonment_time": abandonment_time,
+        "min_bag_track_frames": min_bag_track_frames,
         "show_boxes": show_boxes,
         "show_ids": show_ids,
         "input_source": input_source,
@@ -128,7 +137,7 @@ def build_detections(frame):
         source=frame,
         conf=confidence_threshold,
         iou=iou_threshold,
-        verbose=False,
+        verbose=False
     )
 
     detections = []
@@ -156,23 +165,41 @@ def build_detections(frame):
     return detections
 
 
-def detect_frame(frame):
+def detect_frame(frame, bag_analyzer=None):
     detections = build_detections(frame)
     annotated_frame = frame.copy()
 
     if deepsort_tracker.enabled:
         tracks = deepsort_tracker.update(detections, frame=frame)
+        bag_status_by_id = {}
+        events = []
+
+        if bag_analyzer is not None:
+            bag_status_by_id, events = bag_analyzer.update(tracks)
 
         for tracked_obj in tracks:
             x1, y1, x2, y2 = tracked_obj.bbox_xyxy
             class_name = tracked_obj.class_name.lower()
-            color = (0, 200, 0) if class_name == "person" else (0, 165, 255)
+            track_id = tracked_obj.track_id
+
+            if class_name == "person":
+                color = (0, 200, 0)
+            else:
+                bag_state = bag_status_by_id.get(track_id, {})
+                bag_status = bag_state.get("status", "normal")
+                color = BAG_STATUS_COLORS.get(bag_status, (0, 165, 255))
 
             if show_boxes:
                 cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
 
             if show_ids:
                 label = f"{tracked_obj.class_name} #{tracked_obj.track_id}"
+                if class_name in BAG_CLASSES:
+                    bag_state = bag_status_by_id.get(track_id, {})
+                    bag_status = bag_state.get("status")
+                    if bag_status:
+                        label = f"{label} [{bag_status}]"
+
                 cv2.putText(
                     annotated_frame,
                     label,
@@ -184,7 +211,7 @@ def detect_frame(frame):
                     cv2.LINE_AA,
                 )
 
-        return annotated_frame, tracks
+        return annotated_frame, tracks, events
 
     # Fallback visualization if DeepSORT is unavailable: draw plain detections.
     for det in detections:
@@ -207,7 +234,7 @@ def detect_frame(frame):
             cv2.LINE_AA,
         )
 
-    return annotated_frame, detections
+    return annotated_frame, detections, []
 
 
 def process_uploaded_video(video_path):
@@ -219,7 +246,8 @@ def process_uploaded_video(video_path):
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
+    print(f"width:{width}")
+    print(f"height:{height}")
     output_video_path = os.path.join(
         OUTPUT_DIR,
         f"detected_{Path(video_path).stem}.mp4",
@@ -232,8 +260,18 @@ def process_uploaded_video(video_path):
         (width, height),
     )
 
+    bag_analyzer = SuspiciousBagAnalyzer(
+        distance_threshold_px=distance_threshold,
+        abandonment_time_sec=abandonment_time,
+        fps=fps,
+        min_bag_track_frames=min_bag_track_frames,
+    )
+
     person_ids = set()
     bag_ids = set()
+    alert_events = 0
+    first_alert_timestamp = None
+    all_events = []
     progress = st.progress(0)
     status_text = st.empty()
 
@@ -243,7 +281,14 @@ def process_uploaded_video(video_path):
         if not ret:
             break
 
-        annotated_frame, objects = detect_frame(frame)
+        annotated_frame, objects, frame_events = detect_frame(frame, bag_analyzer=bag_analyzer)
+        all_events.extend(frame_events)
+
+        for event in frame_events:
+            if event["status"] == "abandoned":
+                alert_events += 1
+                if first_alert_timestamp is None:
+                    first_alert_timestamp = event["time"]
 
         for obj in objects:
             class_name = getattr(obj, "class_name", "").lower()
@@ -270,11 +315,22 @@ def process_uploaded_video(video_path):
     progress.empty()
     status_text.empty()
 
+    events_csv_path = os.path.join(OUTPUT_DIR, "events.csv")
+    with open(events_csv_path, "w") as f:
+        f.write("time,bag_id,person_id,distance,status,previous_status\n")
+        for event in all_events:
+            f.write(
+                f"{event['time']},{event['bag_id']},{event['person_id']},{event['distance']},{event['status']},{event['previous_status']}\n"
+            )
+
     summary = {
         "total_people_detected": len(person_ids),
         "total_bags_detected": len(bag_ids),
+        "alert_events": alert_events,
+        "first_alert_timestamp": first_alert_timestamp,
         "status": "Completed",
         "output_video": output_video_path,
+        "events_csv": events_csv_path,
     }
     with open(os.path.join(OUTPUT_DIR, "summary.json"), "w") as f:
         json.dump(summary, f, indent=4)
@@ -352,7 +408,13 @@ elif mode == "Webcam Snapshot":
                 if frame_bgr is None:
                     st.error("Failed to load captured snapshot for detection.")
                 else:
-                    detected_frame, _ = detect_frame(frame_bgr)
+                    snapshot_analyzer = SuspiciousBagAnalyzer(
+                        distance_threshold_px=distance_threshold,
+                        abandonment_time_sec=abandonment_time,
+                        fps=1,
+                        min_bag_track_frames=1,
+                    )
+                    detected_frame, _, _ = detect_frame(frame_bgr, bag_analyzer=snapshot_analyzer)
                     detected_frame_rgb = cv2.cvtColor(detected_frame, cv2.COLOR_BGR2RGB)
                     st.image(detected_frame_rgb, caption="Snapshot Detection", use_container_width=True)
     else:
@@ -375,6 +437,12 @@ elif mode == "Live Webcam":
             st.error("Could not access webcam.")
         else:
             info_box.info("Webcam is running. Uncheck 'Start Live Camera' to stop.")
+            live_bag_analyzer = SuspiciousBagAnalyzer(
+                distance_threshold_px=distance_threshold,
+                abandonment_time_sec=abandonment_time,
+                fps=30,
+                min_bag_track_frames=min_bag_track_frames,
+            )
 
             while run_camera:
                 ret, frame = cap.read()
@@ -383,7 +451,7 @@ elif mode == "Live Webcam":
                     break
 
                 # Apply YOLO + DeepSORT pipeline
-                frame, _ = detect_frame(frame)
+                frame, _, _ = detect_frame(frame, bag_analyzer=live_bag_analyzer)
 
                 # Convert BGR to RGB for Streamlit display
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
