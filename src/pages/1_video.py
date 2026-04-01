@@ -102,7 +102,10 @@ if model_error:
 
 if "deepsort_tracker" not in st.session_state:
     # Store tracker in session state so IDs can persist across Streamlit reruns.
-    st.session_state.deepsort_tracker = DeepSortTracker(max_age=30, n_init=3)
+    st.session_state.deepsort_tracker = DeepSortTracker(
+        max_iou_distance=0.85,
+        max_cosine_distance=0.3,
+    )
 
 deepsort_tracker = st.session_state.deepsort_tracker
 
@@ -137,7 +140,8 @@ def build_detections(frame):
         source=frame,
         conf=confidence_threshold,
         iou=iou_threshold,
-        verbose=False
+        verbose=False,
+        imgsz=640,  # width, height
     )
 
     detections = []
@@ -371,7 +375,10 @@ if mode == "Upload Video":
                 st.error("Model is not ready. Check the sidebar for setup errors.")
             else:
                 if deepsort_tracker.enabled:
-                    st.session_state.deepsort_tracker = DeepSortTracker(max_age=30, n_init=3)
+                    st.session_state.deepsort_tracker = DeepSortTracker(
+                        max_iou_distance=0.85,
+                        max_cosine_distance=0.3,
+                    )
                     deepsort_tracker = st.session_state.deepsort_tracker
 
                 try:
