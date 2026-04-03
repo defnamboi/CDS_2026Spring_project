@@ -1,9 +1,9 @@
 {
-    "total_people_detected": 1,
-    "total_bags_detected": 4,
-    "alert_events": 1,
-    "first_alert_timestamp": "00:09",
+    "total_people_detected": 17,
+    "total_bags_detected": 11,
+    "alert_events": 2,
+    "first_alert_timestamp": "00:03",
     "status": "Completed",
-    "output_video": "outputs\\detected_test2.mp4",
+    "output_video": "outputs\\detected_test11.mp4",
     "events_csv": "outputs\\events.csv"
 }
