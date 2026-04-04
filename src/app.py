@@ -11,7 +11,7 @@ This app provides a simple surveillance interface for detecting **people**, **ba
 potential **abandoned baggage events** from uploaded video footage.
 
 ### How to use
-1. Go to **Upload And Run**
+1. Go to **video**
 2. Upload a surveillance video
 3. Configure thresholds
 4. Run detection
@@ -26,6 +26,3 @@ with col1:
 
 with col2:
     st.metric("Event States", "Normal / Unattended / Abandoned")
-
-with col3:
-    st.metric("Interface", "Streamlit UI")
