@@ -79,7 +79,7 @@ class DeepSortTracker:
         # time_since_update >= 2  → too stale, skip
         live_tracks = [
             t for t in raw_tracks
-            if t.is_confirmed() and t.time_since_update <= 2
+            if t.is_confirmed() and t.time_since_update <= 1
         ]
 
         # Older (more hits) tracks get priority in duplicate resolution
