@@ -1,0 +1,13 @@
+{
+    "model_name": "yolo11m_COCO_V2 (exp2) - best.pt",
+    "model_path": "C:\\Users\\HP Victus\\CDS_2026Spring_project\\runs\\detect\\yolo11m_COCO_V2\\exp2\\weights\\best.pt",
+    "confidence_threshold": 0.5,
+    "iou_threshold": 0.25,
+    "distance_threshold": 100,
+    "abandonment_time": 3,
+    "min_bag_track_frames": 5,
+    "show_boxes": true,
+    "show_ids": true,
+    "input_source": "video_upload",
+    "input_path": "uploads\\test11.mp4"
+}
