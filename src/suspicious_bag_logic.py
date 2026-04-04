@@ -6,14 +6,15 @@ class SuspiciousBagAnalyzer:
 
     def __init__(
         self,
-        distance_threshold_px=120,
-        abandonment_time_sec=2,
-        fps=25.0,
-        min_bag_track_frames=10,
+        distance_threshold_px,
+        abandonment_time_sec,
+        min_bag_track_frames,
+        fps=20.0
     ):
         self.distance_threshold_px = float(distance_threshold_px)
         self.abandonment_time_sec = float(abandonment_time_sec)
-        self.fps = float(fps) if fps and fps > 0 else 25.0
+        #video is recorded in 30fps, assume compressed to 20fps after sending over telegram
+        self.fps = float(fps) if fps > 0.0 else 20.0
         self.min_bag_track_frames = int(min_bag_track_frames)
 
         self.person_labels = {"person"}
