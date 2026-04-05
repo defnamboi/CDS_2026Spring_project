@@ -36,9 +36,3 @@ if os.path.exists(summary_path):
 else:
     st.warning("No summary available yet. Run detection first.")
 
-st.subheader("Processed Video")
-
-if os.path.exists(video_path):
-    st.video(video_path)
-else:
-    st.info("Processed video not found yet. Your backend should save it as outputs/processed_video.mp4")
