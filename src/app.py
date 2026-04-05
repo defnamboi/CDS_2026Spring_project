@@ -19,10 +19,10 @@ potential **abandoned baggage events** from uploaded video footage.
 """)
 
 
-col1, col2, col3 = st.columns(3)
+col1, col2= st.columns(2)
 
 with col1:
     st.metric("Detection Target", "People + Bags")
 
 with col2:
-    st.metric("Event States", "Normal / Unattended / Abandoned")
+    st.metric("Event States", "Warmup/ Normal / Unattended / Abandoned")
