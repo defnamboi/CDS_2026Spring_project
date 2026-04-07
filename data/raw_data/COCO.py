@@ -10,8 +10,8 @@ OUTPUT_DIR = r"C:\Users\HP Victus\CDS_2026Spring_project\final_unified_dataset"
 YOLO_CLASSES = {
     "person":   0,
     "handbag":  1,
-    "backpack": 1,
-    "suitcase": 1,
+    "backpack": 2,
+    "suitcase": 3,
 }
 BAG_LABELS = {"handbag", "backpack", "suitcase"}
 
@@ -133,13 +133,16 @@ for split_name in SPLIT:
     print(f"  {split_name:<6}: {count} images")
 
 # ── Write dataset.yaml ────────────────────────────────────────────────────────
+class_names = ["person", "handbag", "backpack", "suitcase"]
+
 yaml_path = Path(OUTPUT_DIR) / "dataset.yaml"
 yaml_path.write_text(
     f"path: {OUTPUT_DIR}\n"
     f"train: images/train\n"
     f"val:   images/val\n"
     f"test:  images/test\n\n"
-    f"nc: 2\n"
-    f"names: ['person', 'bag']\n"
+    f"nc: {len(class_names)}\n"
+    f"names: {class_names}\n"
 )
-print(f"\n✅ dataset.yaml written to {yaml_path}")
+
+print(f"\n✅ dataset.yaml written with {len(class_names)} classes.")
