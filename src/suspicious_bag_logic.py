@@ -18,7 +18,6 @@ class _FrameAdapter(logging.LoggerAdapter):
 
 class SuspiciousBagAnalyzer:
     """
-    Track bag-to-person distance over time and flag unattended/abandoned bags.
 
     Status machine
     --------------
@@ -86,9 +85,6 @@ class SuspiciousBagAnalyzer:
         # Value includes the status so we know what level to restore.
         self._alert_positions: dict[tuple, dict] = {}
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def update(self, tracked_objects):
         self.frame_index += 1
@@ -190,9 +186,7 @@ class SuspiciousBagAnalyzer:
         self._cleanup_states(valid_bags, log)
         return bag_status_by_id, events
 
-    # ------------------------------------------------------------------
     # Status logic
-    # ------------------------------------------------------------------
 
     def _calculate_status(self, state, nearest_dist, nearest_person_id, bag_center, log):
 
@@ -241,9 +235,7 @@ class SuspiciousBagAnalyzer:
         self._register_alert_position(bag_center, "unattended", log)
         return "unattended"
 
-    # ------------------------------------------------------------------
     # Spatial position memory
-    # ------------------------------------------------------------------
 
     def _get_position_bucket(self, center):
         return (int(center[0] // self._GRID_SIZE), int(center[1] // self._GRID_SIZE))
@@ -291,9 +283,7 @@ class SuspiciousBagAnalyzer:
                         log.debug(f"CLEARED alert position bucket={key}")
                     del self._alert_positions[key]
 
-    # ------------------------------------------------------------------
     # Movement / carried-bag detection
-    # ------------------------------------------------------------------
 
     def _is_bag_moving(self, state):
         history = state["center_history"]
@@ -313,9 +303,7 @@ class SuspiciousBagAnalyzer:
         half_thresh = self.movement_threshold_px * 0.5
         return d1 > half_thresh and d2 > half_thresh and d3 > half_thresh
 
-    # ------------------------------------------------------------------
     # Center smoothing (EMA)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _ema_center(state, new_center, alpha=0.6):
@@ -328,9 +316,7 @@ class SuspiciousBagAnalyzer:
         state["ema_center"] = (sx, sy)
         return (sx, sy)
 
-    # ------------------------------------------------------------------
     # Duplicate suppression
-    # ------------------------------------------------------------------
 
     def _filter_duplicate_bags(self, bags):
         sorted_bags = sorted(
@@ -352,9 +338,7 @@ class SuspiciousBagAnalyzer:
             centers.append(c)
         return unique_bags
 
-    # ------------------------------------------------------------------
     # ID recovery on re-appearance
-    # ------------------------------------------------------------------
 
     def _attempt_id_recovery(self, bag_id, bag_center, log=None):
         recovery_window_frames = self.fps * 10
@@ -489,9 +473,7 @@ class SuspiciousBagAnalyzer:
             "owner_lost_frame":       None,
         }
 
-    # ------------------------------------------------------------------
     # Nearest person (bbox-edge distance)
-    # ------------------------------------------------------------------
 
     def _get_nearest_person(self, bag_center, person_bboxes):
         nearest_id, min_dist = None, float("inf")
@@ -503,9 +485,7 @@ class SuspiciousBagAnalyzer:
                 min_dist, nearest_id = d, p_id
         return nearest_id, min_dist
 
-    # ------------------------------------------------------------------
     # State cleanup
-    # ------------------------------------------------------------------
 
     def _cleanup_states(self, current_bags, log=None):
         active_ids      = {b.track_id for b in current_bags}
@@ -525,10 +505,6 @@ class SuspiciousBagAnalyzer:
                             )
                         self._clear_alert_position(bstate["last_center"], log)
                     del self.bag_state[bid]
-
-    # ------------------------------------------------------------------
-    # Utilities
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _cls(obj):

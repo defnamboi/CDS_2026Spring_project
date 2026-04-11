@@ -15,24 +15,9 @@ class TrackedObject:
 
 class DeepSortTracker:
     """
-    Thin wrapper around deep_sort_realtime tuned for fine-tuned YOLO models.
 
-    Key design decisions
-    --------------------
-    * n_init=3          – confirm tracks faster; fine-tuned YOLO is already precise
-                          so we don't need 5 frames of evidence before trusting it.
-    * max_age=90        – keep a predicted track alive for up to 90 frames (~3.6 s at
-                          25 fps) before discarding. This absorbs occlusion and missed
-                          detections without spawning a new ID on re-appearance.
-    * max_cosine_distance=0.35
-                        – relaxed from 0.2. Fine-tuned models can produce slightly
-                          varying embeddings across frames; being too tight causes
-                          good tracks to be rejected and re-assigned new IDs.
-    * max_iou_distance=0.7
-                        – unchanged; generous enough to handle partial occlusion.
-    * Ghost filter: allow time_since_update <= 1 instead of == 0. This lets DeepSORT's
-                    Kalman predictor bridge a single missed detection frame without
-                    killing the track (the primary cause of ID flicker).
+    Thin wrapper around deep_sort_realtime tuned for fine-tuned YOLO models.
+    
     """
 
     # Same-class duplicate suppression: bags closer than this (px) are the same object
@@ -62,10 +47,6 @@ class DeepSortTracker:
                 max_cosine_distance=max_cosine_distance,
             )
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def update(self, detections, frame=None):
         if not self.enabled or self._tracker is None:
             return []
@@ -87,9 +68,7 @@ class DeepSortTracker:
 
         return self._resolve_duplicates(live_tracks)
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
 
     def _prepare_inputs(self, detections):
         """Convert raw detections to the (ltwh, conf, class) format DeepSORT expects."""
@@ -128,7 +107,7 @@ class DeepSortTracker:
                 math.hypot(center[0] - sc[0], center[1] - sc[1]) < self.MERGE_DISTANCE_PX
                 for sc in bucket
             ):
-                continue  # duplicate — discard the junior track
+                continue  # duplicate case
 
             bucket.append(center)
 
@@ -144,10 +123,8 @@ class DeepSortTracker:
 
         return tracked_objects
 
-    # ------------------------------------------------------------------
     # IoU utility (kept for reference / future NMS use)
-    # ------------------------------------------------------------------
-
+    
     @staticmethod
     def _calculate_iou(boxA, boxB):
         xA = max(boxA[0], boxB[0])

@@ -341,7 +341,7 @@ def process_uploaded_video(video_path):
 def convert_to_h264(input_path):
     base, _ = os.path.splitext(input_path)
     output_path = f"{base}_h264.mp4"
-
+    #this path is HARDCODED
     ffmpeg_path = r"C:\Users\Nam\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1-full_build\bin\ffmpeg.exe"
 
     if not os.path.exists(ffmpeg_path):
