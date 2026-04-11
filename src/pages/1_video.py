@@ -5,6 +5,7 @@ from pathlib import Path
 import cv2
 import streamlit as st
 from PIL import Image
+import subprocess
 
 try:
     from ultralytics import YOLO
@@ -71,10 +72,10 @@ else:
     )
 
 confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.5, 0.05)
-iou_threshold = st.sidebar.slider("IoU Threshold", 0.0, 1.0, 0.5, 0.05) #intersection over union,overlap of frames
-distance_threshold = st.sidebar.slider("Bag-Person Distance Threshold (pixels)", 10, 500, 120, 10)
-abandonment_time = st.sidebar.slider("Abandonment Time Threshold (seconds)", 1, 60, 10, 1)
-min_bag_track_frames = st.sidebar.slider("Min Bag Track Frames", 1, 60, 12, 1)
+iou_threshold = st.sidebar.slider("IoU Threshold", 0.0, 1.0, 0.25, 0.05) #intersection over union,overlap of frames
+distance_threshold = st.sidebar.slider("Bag-Person Distance Threshold (pixels)", 10, 500, 100, 10)
+abandonment_time = st.sidebar.slider("Abandonment Time Threshold (seconds)", 1, 60, 3, 1)
+min_bag_track_frames = st.sidebar.slider("Min Bag Track Frames", 1, 60, 5, 1)
 show_boxes = st.sidebar.checkbox("Show Bounding Boxes", value=True)
 show_ids = st.sidebar.checkbox("Show Tracking IDs", value=True)
 
@@ -247,8 +248,6 @@ def process_uploaded_video(video_path):
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print(f"width:{width}")
-    print(f"height:{height}")
     output_video_path = os.path.join(
         OUTPUT_DIR,
         f"detected_{Path(video_path).stem}.mp4",
@@ -315,6 +314,7 @@ def process_uploaded_video(video_path):
     writer.release()
     progress.empty()
     status_text.empty()
+    playable_video_path = convert_to_h264(output_video_path)
 
     events_csv_path = os.path.join(OUTPUT_DIR, "events.csv")
     with open(events_csv_path, "w") as f:
@@ -330,21 +330,40 @@ def process_uploaded_video(video_path):
         "alert_events": alert_events,
         "first_alert_timestamp": first_alert_timestamp,
         "status": "Completed",
-        "output_video": output_video_path,
+        "output_video": playable_video_path,
         "events_csv": events_csv_path,
     }
     with open(os.path.join(OUTPUT_DIR, "summary.json"), "w") as f:
         json.dump(summary, f, indent=4)
 
-    return output_video_path, summary
+    return playable_video_path, summary
 
+def convert_to_h264(input_path):
+    base, _ = os.path.splitext(input_path)
+    output_path = f"{base}_h264.mp4"
 
+    ffmpeg_path = r"C:\Users\Nam\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1-full_build\bin\ffmpeg.exe"
+
+    if not os.path.exists(ffmpeg_path):
+        raise RuntimeError(f"FFmpeg executable not found at: {ffmpeg_path}")
+
+    subprocess.run([
+        ffmpeg_path,
+        "-y",
+        "-i", input_path,
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        output_path
+    ], check=True)
+
+    return output_path
 # =========================
 # Input mode selector
 # =========================
 mode = st.radio(
     "Select Input Mode",
-    ["Upload Video", "Webcam Snapshot", "Live Webcam"],
+    ["Upload Video"],
     horizontal=True
 )
 
@@ -365,7 +384,6 @@ if mode == "Upload Video":
         video_bytes = video_file.read()
         st.video(video_bytes)
 
-        video_file.close()
         if st.button("▶ Run Detection on Video"):
             save_run_config("video_upload", video_path)
             if yolo_model is None:
@@ -377,90 +395,15 @@ if mode == "Upload Video":
 
                 try:
                     output_video_path, summary = process_uploaded_video(video_path)
+                    st.success(output_video_path)
                     st.success("Detection completed.")
                     st.subheader("Detected Video")
-                    with open(output_video_path, "rb") as f:
-                        st.video(f.read())
+                    with open(output_video_path, "rb") as output_video_file:
+                        output_video_bytes = output_video_file.read()
+                    st.video(output_video_bytes, format="video/mp4")
+                    # st.video(output_video_bytes)
                     st.json(summary)
                 except Exception as exc:
                     st.error(f"Detection failed: {exc}")
     else:
         st.info("Upload a video to begin.")
-
-
-elif mode == "Webcam Snapshot":
-    st.write("Use your webcam to capture a single frame for testing.")
-    camera_image = st.camera_input("Take a picture")
-
-    if camera_image is not None:
-        image = Image.open(camera_image)
-        image_path = os.path.join(UPLOAD_DIR, "webcam_snapshot.jpg")
-        image.save(image_path)
-
-        st.success("Snapshot captured successfully.")
-        st.image(image, caption="Captured Snapshot", use_container_width=True)
-
-        if st.button("▶ Run Detection on Snapshot"):
-            save_run_config("webcam_snapshot", image_path)
-            if yolo_model is None:
-                st.error("Model is not ready. Check the sidebar for setup errors.")
-            else:
-                frame_bgr = cv2.imread(image_path)
-                if frame_bgr is None:
-                    st.error("Failed to load captured snapshot for detection.")
-                else:
-                    snapshot_analyzer = SuspiciousBagAnalyzer(
-                        distance_threshold_px=distance_threshold,
-                        abandonment_time_sec=abandonment_time,
-                        fps=1,
-                        min_bag_track_frames=1,
-                    )
-                    detected_frame, _, _ = detect_frame(frame_bgr, bag_analyzer=snapshot_analyzer)
-                    detected_frame_rgb = cv2.cvtColor(detected_frame, cv2.COLOR_BGR2RGB)
-                    st.image(detected_frame_rgb, caption="Snapshot Detection", use_container_width=True)
-    else:
-        st.info("Capture an image to begin.")
-
-
-elif mode == "Live Webcam":
-    st.write("Start your webcam for live preview. This is mainly for local testing.")
-    run_camera = st.checkbox("Start Live Camera")
-
-    frame_window = st.image([])
-    info_box = st.empty()
-
-    cap = None
-
-    if run_camera:
-        cap = cv2.VideoCapture(0)
-
-        if not cap.isOpened():
-            st.error("Could not access webcam.")
-        else:
-            info_box.info("Webcam is running. Uncheck 'Start Live Camera' to stop.")
-            live_bag_analyzer = SuspiciousBagAnalyzer(
-                distance_threshold_px=distance_threshold,
-                abandonment_time_sec=abandonment_time,
-                fps=30,
-                min_bag_track_frames=min_bag_track_frames,
-            )
-
-            while run_camera:
-                ret, frame = cap.read()
-                if not ret:
-                    st.error("Failed to read from webcam.")
-                    break
-
-                # Apply YOLO + DeepSORT pipeline
-                frame, _, _ = detect_frame(frame, bag_analyzer=live_bag_analyzer)
-
-                # Convert BGR to RGB for Streamlit display
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame_window.image(frame_rgb, channels="RGB", use_container_width=True)
-
-                # Re-read checkbox state on rerun
-                run_camera = st.session_state.get("Start Live Camera", True)
-
-            cap.release()
-    else:
-        st.info("Tick 'Start Live Camera' to preview your webcam.")
