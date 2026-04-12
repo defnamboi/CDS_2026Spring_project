@@ -6,6 +6,18 @@ st.set_page_config(
 )
 
 st.title("🧳 Abandoned Bag Detection System")
+st.markdown(
+    """
+    <style>
+    div[data-testid="stMetricValue"] > div {
+        white-space: normal;
+        line-height: 1.2;
+        font-size: 1.25rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 st.markdown("""
 This app provides a simple surveillance interface for detecting **people**, **bags of all type**, and
 potential **abandoned baggage events** from uploaded video footage.
