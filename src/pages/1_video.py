@@ -40,9 +40,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 st.title("Upload And Run")
 
-# =========================
+
 # Sidebar settings
-# =========================
 st.sidebar.header("Detection Settings")
 best_weight_paths = sorted(RUNS_DIR.glob("**/weights/best.pt"))
 
@@ -377,8 +376,6 @@ if mode == "Upload Video":
         with open(video_path, "wb") as f:
             f.write(uploaded_file.read())
 
-        st.success(f"Uploaded: {uploaded_file.name}")
-        st.success(f"video path: {video_path}")
         st.subheader("Original Video Preview")
         video_file = open(video_path,"rb")
         video_bytes = video_file.read()
@@ -401,7 +398,6 @@ if mode == "Upload Video":
                     with open(output_video_path, "rb") as output_video_file:
                         output_video_bytes = output_video_file.read()
                     st.video(output_video_bytes, format="video/mp4")
-                    # st.video(output_video_bytes)
                     st.json(summary)
                 except Exception as exc:
                     st.error(f"Detection failed: {exc}")
