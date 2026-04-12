@@ -70,7 +70,6 @@ def download_bags_stable():
             )
             print(f"  Images: {actual_images}, Objects: {actual_objects}")
 
-            # Export
             yolo_split = "val" if native_split == "validation" else native_split
             final_view.export(
                 export_dir=export_dir,

@@ -1,6 +1,5 @@
-import fiftyone as fo
 import fiftyone.zoo as foz
-import os, shutil, random
+import shutil, random
 from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────────────────────

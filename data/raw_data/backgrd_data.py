@@ -13,8 +13,6 @@ dataset = foz.load_zoo_dataset(
 )
 
 # ── 2. Filter: keep only images with NO person or handbag ────────────────────
-# NOTE: load_zoo_dataset with classes= ONLY downloads those classes
-# So we load ALL classes and filter manually instead
 background_samples = []
 
 for sample in dataset:

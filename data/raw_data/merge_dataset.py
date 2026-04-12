@@ -26,8 +26,6 @@ final unified_dataset/
 
 
 """
-import os
-import shutil
 
 # --- CONFIGURATION ---
 PROJECT_ROOT = os.getcwd()
@@ -102,7 +100,7 @@ def process_and_merge(src_path, is_roboflow=True, bag=False):
                     new_lines.append(" ".join(parts) + "\n")
             
             # Use 'a' (append) because multiple sources (OI Bag, OI Person, Roboflow) 
-            # might contribute to the same image filename if names collide
+            # will overwrite if names collide
             with open(os.path.join(target_lbl_dir, label_file), 'w') as f:
                 f.writelines(new_lines)
 
