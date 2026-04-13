@@ -2,7 +2,7 @@ import fiftyone.zoo as foz
 import shutil, random
 from pathlib import Path
 
-# ── Config ────────────────────────────────────────────────────────────────────
+#  Config 
 OUTPUT_DIR = r"C:\Users\HP Victus\CDS_2026Spring_project\final_unified_dataset"
 
 # COCO label → YOLO class ID (person=0, bag=1)
@@ -24,12 +24,12 @@ TARGET = {
 SPLIT = {"train": 0.80, "val": 0.10, "test": 0.10}
 random.seed(42)
 
-# ── Create output folders ─────────────────────────────────────────────────────
+# Create output folders
 for split in SPLIT:
     Path(f"{OUTPUT_DIR}/images/{split}").mkdir(parents=True, exist_ok=True)
     Path(f"{OUTPUT_DIR}/labels/{split}").mkdir(parents=True, exist_ok=True)
 
-# ── Download COCO pool ────────────────────────────────────────────────────────
+#  Download COCO pool
 dataset = foz.load_zoo_dataset(
     "coco-2017",
     split="train",
@@ -37,7 +37,7 @@ dataset = foz.load_zoo_dataset(
     max_samples=30000,        # large pool to satisfy all buckets
 )
 
-# ── Bucket samples ────────────────────────────────────────────────────────────
+#  Bucket samples
 buckets = {k: [] for k in TARGET}
 
 for sample in dataset:
@@ -58,7 +58,7 @@ for sample in dataset:
 for k, v in buckets.items():
     print(f"{k:<20}: {len(v)} images")
 
-# ── Split helper ──────────────────────────────────────────────────────────────
+# Split helper 
 def split_samples(samples):
     """Returns {'train': [...], 'val': [...], 'test': [...]}"""
     s = samples[:]
@@ -72,7 +72,7 @@ def split_samples(samples):
         "test":  s[n_train + n_val :],
     }
 
-# ── Save helper ───────────────────────────────────────────────────────────────
+# Save helper
 def save_sample(sample, prefix, idx, split, is_background=False):
     dets       = sample.ground_truth.detections if sample.ground_truth else []
     yolo_lines = []
@@ -101,7 +101,7 @@ def save_sample(sample, prefix, idx, split, is_background=False):
 
     return True
 
-# ── Process each bucket ───────────────────────────────────────────────────────
+#  Process each bucket 
 totals = {split: 0 for split in SPLIT}
 
 bucket_meta = [
@@ -125,13 +125,13 @@ for bucket_key, prefix, is_bg in bucket_meta:
     for s, n in saved.items():
         print(f"  {s:<6}: {n}")
 
-# ── Summary ───────────────────────────────────────────────────────────────────
+# Summary 
 print("\n── Final split counts ──────────────────────────────")
 for split_name in SPLIT:
     count = len(list(Path(f"{OUTPUT_DIR}/images/{split_name}").glob("*.jpg")))
     print(f"  {split_name:<6}: {count} images")
 
-# ── Write dataset.yaml ────────────────────────────────────────────────────────
+# Write dataset.yaml
 class_names = ["person", "handbag", "backpack", "suitcase"]
 
 yaml_path = Path(OUTPUT_DIR) / "dataset.yaml"

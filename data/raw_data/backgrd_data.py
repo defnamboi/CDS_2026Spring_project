@@ -4,7 +4,7 @@ import os
 import shutil
 from pathlib import Path
 
-# ── 1. Download COCO samples ─────────────────────────────────────────────────
+# 1. Download COCO samples 
 dataset = foz.load_zoo_dataset(
     "coco-2017",
     split="train",
@@ -12,7 +12,7 @@ dataset = foz.load_zoo_dataset(
     max_samples=1000,
 )
 
-# ── 2. Filter: keep only images with NO person or handbag ────────────────────
+# 2. Filter: keep only images with NO person or handbag
 background_samples = []
 
 for sample in dataset:
@@ -30,7 +30,7 @@ for sample in dataset:
 
 print(f"Found {len(background_samples)} clean background images")
 
-# ── 3. Copy to local background_images folder ────────────────────────────────
+#  3. Copy to local background_images folder
 background_dir = "background_images"
 os.makedirs(background_dir, exist_ok=True)
 
@@ -40,7 +40,7 @@ for idx, img_path in enumerate(background_samples):
 
 print(f"Saved {len(background_samples)} images to '{background_dir}/'")
 
-# ── 4. Use absolute Windows path to avoid PermissionError ────────────────────
+# 4. Use absolute Windows path to avoid PermissionError 
 # Update this to your actual dataset path
 dst_images = r"C:\Users\HP Victus\CDS_2026Spring_project\final_unified_dataset\images\train"
 dst_labels = r"C:\Users\HP Victus\CDS_2026Spring_project\final_unified_dataset\labels\train"
@@ -48,7 +48,7 @@ dst_labels = r"C:\Users\HP Victus\CDS_2026Spring_project\final_unified_dataset\l
 os.makedirs(dst_images, exist_ok=True)
 os.makedirs(dst_labels, exist_ok=True)
 
-# ── 5. Inject into YOLO dataset ──────────────────────────────────────────────
+# 5. Inject into YOLO dataset 
 src_images = "background_images"
 count = 0
 
@@ -66,7 +66,7 @@ for img_file in os.listdir(src_images):
 
 print(f"✅ Added {count} background images to training set")
 
-# ── 6. Sanity check ───────────────────────────────────────────────────────────
+#  6. Sanity check
 img_count = len(os.listdir(dst_images))
 lbl_count = len(os.listdir(dst_labels))
 

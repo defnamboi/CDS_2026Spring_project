@@ -16,12 +16,6 @@ def download_persons_stable():
     classes = ["Person"]
     export_dir = "./person_detection_dataset"
 
-    # Now these are TARGET IMAGE counts (1 image = 1 object since we filter to single-person images)
-    # split_map = {
-    #     "test": 256,
-    #     "validation": 534,
-    #     "train": 2180,
-    # }
     split_map = {
         "test": 100,
         "validation": 200,
